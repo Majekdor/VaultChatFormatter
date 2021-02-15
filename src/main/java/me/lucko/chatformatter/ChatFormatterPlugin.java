@@ -101,7 +101,7 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) throws IllegalArgumentException {
-        if (args.length == 0)
+        if (args.length == 1)
             return Collections.singletonList("reload");
         else
             return Collections.emptyList();
