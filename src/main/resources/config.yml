@@ -21,3 +21,8 @@ format: "<{prefix}{name}{suffix}> {message}"
 format-join-leave: false
 join-format: " > {prefix}{name}{suffix} has joined the game."
 leave-format: " > {prefix}{name}{suffix} has left the game."
+# Whether or not this plugin should format player death messages.
+# {message} placeholder is not valid here.
+format-deaths: false
+# The player name(s) will be replaced using this format.
+deaths-format: "{prefix}{name}{suffix}"

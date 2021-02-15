@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -42,11 +43,14 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
     /** The default chat format */
     private static final String DEFAULT_FORMAT = "<" + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + "> " + MESSAGE_PLACEHOLDER;
 
-    /** The default join format */
+    /** The default join message format */
     private static final String DEFAULT_JOIN_FORMAT = " > " + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + " has joined the game.";
 
-    /** The default leave format */
+    /** The default leave message format */
     private static final String DEFAULT_LEAVE_FORMAT = " > " + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + " has left the game.";
+
+    /** The default death message format */
+    private static final String DEFAULT_DEATH_FORMAT = PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER;
 
     /** Pattern matching "nicer" legacy hex chat color codes - &#rrggbb */
     private static final Pattern NICER_HEX_COLOR_PATTERN = Pattern.compile("&#([0-9a-fA-F]{6})");
@@ -78,9 +82,8 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
 
     private void refreshVault() {
         Chat vaultChat = getServer().getServicesManager().load(Chat.class);
-        if (vaultChat != this.vaultChat) {
+        if (vaultChat != this.vaultChat)
             getLogger().info("New Vault Chat implementation registered: " + (vaultChat == null ? "null" : vaultChat.getName()));
-        }
         this.vaultChat = vaultChat;
     }
 
@@ -93,7 +96,6 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
             sender.sendMessage("Reloaded successfully.");
             return true;
         }
-
         return false;
     }
 
@@ -107,16 +109,14 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onServiceChange(ServiceRegisterEvent e) {
-        if (e.getProvider().getService() == Chat.class) {
+        if (e.getProvider().getService() == Chat.class)
             refreshVault();
-        }
     }
 
     @EventHandler
     public void onServiceChange(ServiceUnregisterEvent e) {
-        if (e.getProvider().getService() == Chat.class) {
+        if (e.getProvider().getService() == Chat.class)
             refreshVault();
-        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -139,6 +139,8 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
         e.setFormat(format);
     }
 
+    // These next three are the highest priority to take control from EssentialsChat
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent e) {
         if (getConfig().getBoolean("format-join-leave", false))
@@ -151,6 +153,20 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
             e.setQuitMessage(colorize(replacePlaceholders(getConfig().getString("leave-format", DEFAULT_LEAVE_FORMAT), e.getPlayer())));
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent e) {
+        if (getConfig().getBoolean("format-deaths", false)) {
+            String message = e.getDeathMessage();
+            message = message.replace(e.getEntity().getName(), getConfig().getString("deaths-format", DEFAULT_DEATH_FORMAT));
+            message = replacePlaceholders(message, e.getEntity());
+            if (e.getEntity().getKiller() != null) {
+                message = message.replace(e.getEntity().getKiller().getName(), getConfig().getString("deaths-format", DEFAULT_DEATH_FORMAT));
+                message = replacePlaceholders(message, e.getEntity().getKiller());
+            }
+            e.setDeathMessage(colorize(message));
+        }
+    }
+
     /**
      * Replaces placeholders for their values in join and leave messages.
      *
@@ -158,7 +174,7 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
      * @param player the player joining or leaving
      * @return join/leave message with placeholders replaced
      */
-    public String replacePlaceholders(String string, Player player) {
+    private String replacePlaceholders(String string, Player player) {
         if (this.vaultChat != null) {
             string = string.replace(PREFIX_PLACEHOLDER, colorize(this.vaultChat.getPlayerPrefix(player)));
             string = string.replace(SUFFIX_PLACEHOLDER, colorize(this.vaultChat.getPlayerSuffix(player)));
@@ -180,9 +196,8 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
      */
     private static String replaceAll(Pattern pattern, String input, Supplier<String> replacement) {
         Matcher matcher = pattern.matcher(input);
-        if (matcher.find()) {
+        if (matcher.find())
             return matcher.replaceAll(Matcher.quoteReplacement(replacement.get()));
-        }
         return input;
     }
 
@@ -193,9 +208,8 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
      * @return the colorized string
      */
     private static String colorize(String string) {
-        if (string == null) {
+        if (string == null)
             return "null";
-        }
 
         // Convert from the '&#rrggbb' hex color format to the '&x&r&r&g&g&b&b' one used by Bukkit.
         Matcher matcher = NICER_HEX_COLOR_PATTERN.matcher(string);
@@ -203,9 +217,8 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
 
         while (matcher.find()) {
             StringBuilder replacement = new StringBuilder(14).append("&x");
-            for (char character : matcher.group(1).toCharArray()) {
+            for (char character : matcher.group(1).toCharArray())
                 replacement.append('&').append(character);
-            }
             matcher.appendReplacement(sb, replacement.toString());
         }
         matcher.appendTail(sb);
