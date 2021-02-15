@@ -16,3 +16,8 @@
 #
 # Standard Minecraft color codes can be used in the format.
 format: "<{prefix}{name}{suffix}> {message}"
+# Whether or not this plugin should format join and leave messages.
+# {message} placeholder is not valid here.
+format-join-leave: false
+join-format: " > {prefix}{name}{suffix} has joined the game."
+leave-format: " > {prefix}{name}{suffix} has left the game."

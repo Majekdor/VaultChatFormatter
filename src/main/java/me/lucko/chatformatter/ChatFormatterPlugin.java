@@ -5,14 +5,19 @@ import net.milkbowl.vault.chat.Chat;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServiceRegisterEvent;
 import org.bukkit.event.server.ServiceUnregisterEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,8 +39,14 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
     private static final Pattern PREFIX_PLACEHOLDER_PATTERN = Pattern.compile(PREFIX_PLACEHOLDER, Pattern.LITERAL);
     private static final Pattern SUFFIX_PLACEHOLDER_PATTERN = Pattern.compile(SUFFIX_PLACEHOLDER, Pattern.LITERAL);
 
-    /** The default format */
+    /** The default chat format */
     private static final String DEFAULT_FORMAT = "<" + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + "> " + MESSAGE_PLACEHOLDER;
+
+    /** The default join format */
+    private static final String DEFAULT_JOIN_FORMAT = " > " + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + " has joined the game.";
+
+    /** The default leave format */
+    private static final String DEFAULT_LEAVE_FORMAT = " > " + PREFIX_PLACEHOLDER + NAME_PLACEHOLDER + SUFFIX_PLACEHOLDER + " has left the game.";
 
     /** Pattern matching "nicer" legacy hex chat color codes - &#rrggbb */
     private static final Pattern NICER_HEX_COLOR_PATTERN = Pattern.compile("&#([0-9a-fA-F]{6})");
@@ -75,7 +86,7 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length != 0 && args[0].equalsIgnoreCase("reload")) {
+        if (args.length != 0 && args[0].equalsIgnoreCase("reload") && sender.isOp()) {
             reloadConfig();
             reloadConfigValues();
 
@@ -84,6 +95,14 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
         }
 
         return false;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) throws IllegalArgumentException {
+        if (args.length == 0)
+            return Collections.singletonList("reload");
+        else
+            return Collections.emptyList();
     }
 
     @EventHandler
@@ -118,6 +137,36 @@ public class ChatFormatterPlugin extends JavaPlugin implements Listener {
         format = replaceAll(NAME_PLACEHOLDER_PATTERN, format, () -> e.getPlayer().getName());
 
         e.setFormat(format);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerJoin(PlayerJoinEvent e) {
+        if (getConfig().getBoolean("format-join-leave", false))
+            e.setJoinMessage(colorize(replacePlaceholders(getConfig().getString("join-format", DEFAULT_JOIN_FORMAT), e.getPlayer())));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerQuit(PlayerQuitEvent e) {
+        if (getConfig().getBoolean("format-join-leave", false))
+            e.setQuitMessage(colorize(replacePlaceholders(getConfig().getString("leave-format", DEFAULT_LEAVE_FORMAT), e.getPlayer())));
+    }
+
+    /**
+     * Replaces placeholders for their values in join and leave messages.
+     *
+     * @param string the config string join message with placeholders
+     * @param player the player joining or leaving
+     * @return join/leave message with placeholders replaced
+     */
+    public String replacePlaceholders(String string, Player player) {
+        if (this.vaultChat != null) {
+            string = string.replace(PREFIX_PLACEHOLDER, colorize(this.vaultChat.getPlayerPrefix(player)));
+            string = string.replace(SUFFIX_PLACEHOLDER, colorize(this.vaultChat.getPlayerSuffix(player)));
+        }
+        string = string.replace(NAME_PLACEHOLDER, player.getName());
+        string = string.replace(DISPLAYNAME_PLACEHOLDER, colorize(player.getDisplayName()));
+
+        return string;
     }
 
     /**
