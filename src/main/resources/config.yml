@@ -15,12 +15,13 @@
 # {message} ==> the message being sent by the player
 #
 # Standard Minecraft color codes can be used in the format.
-format: "<{prefix}{name}{suffix}> {message}"
+# This is the format for all messages sent to chat.
+format: "<{prefix}{displayname}{suffix}> {message}"
 # Whether or not this plugin should format join and leave messages.
 # {message} placeholder is not valid here.
 format-join-leave: false
-join-format: " > {prefix}{name}{suffix} has joined the game."
-leave-format: " > {prefix}{name}{suffix} has left the game."
+join-format: " &7&l>&f {prefix}{name}{suffix}&f has joined the game."
+leave-format: " &7&l>&f {prefix}{name}{suffix}&f has left the game."
 # Whether or not this plugin should format player death messages.
 # {message} placeholder is not valid here.
 format-deaths: false
